@@ -1,63 +1,64 @@
 :- use_module(library(lists)).
 :- use_module(library(clpfd)).
+:- use_module(library(random)).
 
-start_game(Player1, Player2, PitsNumber, PiecesInPit):-
-    % create_initialized_list(PitsNumber, PiecesInPit, Row),
-    % create_initialized_list(2, Row, Board),
-    Board=[[0,0,0,0,3,0], [0,0,0,0,0,0]],
+start_game(Player1, Player2, PitsNumber, PiecesInPit, Player1Func, Player2Func):-
+    create_initialized_list(PitsNumber, PiecesInPit, Row),
+    create_initialized_list(2, Row, Board),
+    % Board=[[0,0,0,0,3,0], [0,0,0,0,0,0]],
     Player1Score is 0,
     Player2Score is 0,
     print_board(Board, Player1, Player2, Player1Score, Player2Score),
-    play(Board, Player1, Player2, Player1, Player1Score, Player2Score), !.
+    play(Board, Player1, Player2, Player1, Player1Score, Player2Score, Player1Func, Player2Func), !.
 
 start_game:-
-    start_game('Maayan', 'CompAI', 6, 4), !.
+    start_game('Maayan', 'CompAI', 6, 4, user_input, random_ai), !.
 
 
-play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score):-
+play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score, Player1Func, Player2Func):-
     (
         CurrentPlayer = Player1,
         RowIndex = 1,
         nth1(RowIndex, Board, Row),
         sumlist(Row, 0),
         write(Player1), write(" can't move "), nl,
-        play(Board, Player1, Player2, Player2, Player1Score, Player2Score)
+        play(Board, Player1, Player2, Player2, Player1Score, Player2Score, Player1Func, Player2Func)
     ;
         CurrentPlayer = Player2,
         RowIndex = 2,
         nth1(RowIndex, Board, Row),
         sumlist(Row, 0),
         write(Player2), write(" can't move "), nl,
-        play(Board, Player1, Player2, Player1, Player1Score, Player2Score)
+        play(Board, Player1, Player2, Player1, Player1Score, Player2Score, Player1Func, Player2Func)
     ), !.
 
-play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score):-
+play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score, Player1Func, Player2Func):-
     (
         CurrentPlayer = Player1,
+        Func = Player1Func,
         Colour = 'blue'
     ;
         CurrentPlayer = Player2,
+        Func = Player2Func,
         Colour = 'green'
     ),
-    write("turn: "),
-    ansi_format([bold,fg(Colour)], '~w', [CurrentPlayer]), nl,
-    write("enter pit number to play: "),
-    read(Pit), % ai func
-    Pit \= 'exit', % if the user enter exit as input the game will stop
+    write("turn: "), ansi_format([bold,fg(Colour)], '~w', [CurrentPlayer]), nl,
+    call(Func, Board, RowIndex, Pit),
+    ansi_format([bold,fg(Colour)], '~w', [CurrentPlayer]), ansi_format([bold,fg(cyan)], ' move is: ~w', [Pit]), nl,
     (
         do_move(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score, Pit, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
         print_board(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
-        next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score)
+        next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func)
     ;
         ansi_format([bold,fg(red)], 'unvalid move, try again', []), nl,
-        play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score)
+        play(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score, Player1Func, Player2Func)
     ), !.
 
-next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score):-
+next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func):-
     check_winner(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score), !.
 
-next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score):-
-    play(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score), !.
+next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func):-
+    play(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func), !.
 
 do_move(Board, Player1, Player2, CurrentPlayer, Player1Score, Player2Score, Pit, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer):-
     integer(Pit),
@@ -220,3 +221,12 @@ create_initialized_list(Length, Value, List):-
 
 % sublist( Sublist, List ) :-
 %     append( [_, Sublist, _], List ), !.
+
+random_ai(Board, RowIndex, Pit):-
+    nth1(RowIndex, Board, Row),
+    length(Row, RowLength),
+    random_between(1, RowLength, Pit).
+
+user_input(Board, RowIndex, Pit):-
+    write("enter pit number to play: "),
+    read(Pit).
