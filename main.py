@@ -12,7 +12,7 @@ pieces_in_pit = 4
 board = [[pieces_in_pit] * pits_number, [pieces_in_pit] * pits_number]
 current_player_number = 1
 player1 = {"name": "Maayan", "func": "", "colour": (0, 0, 180), "score": 0}
-player2 = {"name": "ComputerAI", "func": "", "colour": (0, 128, 0), "score": 0}
+player2 = {"name": "ComputerAI", "func": "random_ai", "colour": (0, 128, 0), "score": 0}
 players = [player1, player2]
 
 # pygame init
@@ -76,18 +76,6 @@ class PitSurface(pygame.sprite.Sprite):
         if self.index >= 0:
             do_move(self.index)
             # update_pits_board()
-
-
-# class PlayerSurface(pygame.sprite.Sprite):
-#     def __init__(self, name, width, height, colour=(0, 0, 0)):
-#         super(PitSurface, self).__init__()
-#         self.name = name
-#         self.surface = pygame.transform.scale(image, (width, height))
-#         self.rect = self.surface.get_rect()
-#         self.font = pygame.font.SysFont("monospace", 30)
-#         self.label = self.font.render(str(self.pieces_amount), 1, colour)
-#         label_rect = self.label.get_rect(center=(width / 2, height / 2))
-#         self.surface.blit(self.label, label_rect)
 
 
 def check_winner():
@@ -204,5 +192,6 @@ if __name__ == '__main__':
         # Flip the display
         pygame.display.flip()
 
+    time.sleep(3)
     # Done! Time to quit.
     pygame.quit()
