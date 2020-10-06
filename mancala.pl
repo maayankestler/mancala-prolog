@@ -5,29 +5,14 @@
 start_game(Player1, Player2, PitsNumber, PiecesInPit, Player1Func, Player2Func):-
     create_initialized_list(PitsNumber, PiecesInPit, Row),
     create_initialized_list(2, Row, Board),
-    % Board=[[0,0,0,0,1,0], [0,0,0,0,0,0]],
+    % Board=[[4,4,0,1,0,4], [4,4,4,4,4,4]],
     Player1Score is 0,
     Player2Score is 0,
     print_board(Board, Player1, Player2, Player1Score, Player2Score),
     play(Board, Player1, Player2, 1, Player1Score, Player2Score, Player1Func, Player2Func), !.
 
 start_game:-
-    start_game('Maayan', 'CompAI', 6, 4, user_input, random_ai), !.
-
-
-play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, Player1Func, Player2Func):-
-    (
-        CurrentPlayerNumber = 1,
-        Player = Player1
-    ;
-        CurrentPlayerNumber = 2,
-        Player = Player2
-    ),
-    nth1(CurrentPlayerNumber, Board, Row),
-    sumlist(Row, 0),
-    write(Player), write(" can't move "), nl,
-    NextPlayer is (CurrentPlayerNumber mod 2) + 1,
-    play(Board, Player1, Player2, NextPlayer, Player1Score, Player2Score, Player1Func, Player2Func), !.
+    start_game('Maayan', 'CompAI', 6, 4, user_input, alphabeta_ai), !.
 
 play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, Player1Func, Player2Func):-
     (
@@ -42,10 +27,10 @@ play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, P
         Colour = 'green'
     ),
     write("turn: "), ansi_format([bold,fg(Colour)], '~w', [Player]), nl,
-    call(Func, Board, CurrentPlayerNumber, Pit),
-    ansi_format([bold,fg(Colour)], '~w', [Player]), ansi_format([bold,fg(cyan)], ' move is: ~w', [Pit]), nl,
+    call(Func, Board, CurrentPlayerNumber, PitIndex),
+    ansi_format([bold,fg(Colour)], '~w', [Player]), ansi_format([bold,fg(cyan)], ' move is: ~w', [PitIndex]), nl,
     (
-        do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, Pit, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
+        do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
         print_board(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
         next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func)
     ;
@@ -59,27 +44,39 @@ next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score, _, _)
 next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func):-
     play(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func), !.
 
-do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, Pit, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer):-
-    integer(Pit),
-    Pit > 0,
+do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer):-
+    integer(PitIndex),
     nth1(CurrentPlayerNumber, Board, Row),
-    replace_nth1(Row, Pit, PiecesCount, 0, NewRow),
-    PiecesCount > 0,
+    valid_move(Row, PitIndex),
+    replace_nth1(Row, PitIndex, PiecesCount, 0, NewRow),
     replace_nth1(Board, CurrentPlayerNumber, _, NewRow, TempBoard),
-    NewPitIndex is Pit + 1,
+    NewPitIndex is PitIndex + 1,
     put_pieces(TempBoard, PiecesCount, CurrentPlayerNumber, NewPitIndex, CurrentPlayerNumber, 
             Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer), !.
 
-put_pieces(Board, 0, _, 1, CurrentPlayerNumber, Player1Score, Player2Score, Board, Player1Score, Player2Score, CurrentPlayerNumber):- !.
+valid_move(Row, PitIndex):-
+    length(Row, RowLength),
+    between(1, RowLength, PitIndex),
+    nth1(PitIndex, Row, Elem),
+    Elem > 0.
+
+put_pieces(Board, 0, _, 1, CurrentPlayerNumber, Player1Score, Player2Score, Board, Player1Score, Player2Score, NextPlayer):-
+    nth1(CurrentPlayerNumber, Board, Row),
+    (
+        sum_list(Row, 0),
+        NextPlayer is (CurrentPlayerNumber mod 2) + 1
+    ;
+        NextPlayer = CurrentPlayerNumber
+    ), !.
 
 put_pieces(Board, 0, RowIndex, PitIndex, CurrentPlayerNumber, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer):-
-    NextPlayer is (CurrentPlayerNumber mod 2) + 1,
+    OtherPlayer is (CurrentPlayerNumber mod 2) + 1,
     (
         CurrentPlayerNumber = RowIndex,
         LastPitIndex is PitIndex - 1,
         nth1(RowIndex, Board, Row),
         replace_nth1(Row, LastPitIndex, 1, 0, NewRow),
-        nth1(NextPlayer, Board, SecondeRow),
+        nth1(OtherPlayer, Board, SecondeRow),
         length(SecondeRow, SecondeRowLength),
         SecondePitIndex is SecondeRowLength - LastPitIndex + 1,
         replace_nth1(SecondeRow, SecondePitIndex, X, 0, NewSecondeRow),
@@ -87,18 +84,25 @@ put_pieces(Board, 0, RowIndex, PitIndex, CurrentPlayerNumber, Player1Score, Play
         (
             CurrentPlayerNumber = 1,
             NewPlayer1Score is Player1Score + X + 1,
-            NewPlayer2Score is Player2Score,
+            NewPlayer2Score = Player2Score,
             NewBoard = [NewRow, NewSecondeRow]
         ;
             CurrentPlayerNumber = 2,
             NewPlayer2Score is Player2Score + X + 1,
-            NewPlayer1Score is Player1Score,
+            NewPlayer1Score = Player1Score,
             NewBoard = [NewSecondeRow, NewRow]
         )
     ;
-        NewPlayer1Score is Player1Score,
-        NewPlayer2Score is Player2Score,
+        NewPlayer1Score = Player1Score,
+        NewPlayer2Score = Player2Score,
         NewBoard = Board
+    ),
+    nth1(OtherPlayer, NewBoard, CheckRow),
+    (
+        sum_list(CheckRow, 0),
+        NextPlayer = CurrentPlayerNumber
+    ;
+        NextPlayer = OtherPlayer
     ), !.
 
 put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
@@ -143,11 +147,8 @@ put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
                TempPlayer1Score, TempPlayer2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer), !.
 
 check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
-    nth1(1, Board, Row1),
-    nth1(2, Board, Row2),
-    sum_list(Row1, Sum1),
-    sum_list(Row2, Sum2),
-    0 =:= Sum1 + Sum2,
+    sum_board(Board, Sum),
+    Sum =:= 0,
     (
         Player1Score > Player2Score,
         write("The winner is "), write(Player1), write("!!!!"), nl
@@ -158,6 +159,13 @@ check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
         Player1Score = Player2Score,
         write("Tie"), nl
     ), !.
+
+sum_board(Board, Sum):-
+    nth1(1, Board, Row1),
+    nth1(2, Board, Row2),
+    sum_list(Row1, Sum1),
+    sum_list(Row2, Sum2),
+    Sum is Sum1 + Sum2.
 
 % % https://www.swi-prolog.org/pldoc/man?predicate=nth0/4
 replace_nth1(List, Index, OldElem, NewElem, NewList) :-
@@ -179,14 +187,75 @@ create_initialized_list(Length, Value, List):-
     length(List,Length), 
     maplist(=(Value), List), !.
 
-% sublist( Sublist, List ) :-
-%     append( [_, Sublist, _], List ), !.
+random_ai(Board, CurrentPlayerNumber, PitIndex):-
+    nth1(CurrentPlayerNumber, Board, Row),
+    findall(Pit, valid_move(Row, Pit), ValidMoves),
+    random_member(PitIndex, ValidMoves).
 
-random_ai(Board, RowIndex, Pit):-
-    nth1(RowIndex, Board, Row),
-    length(Row, RowLength),
-    random_between(1, RowLength, Pit).
+user_input(_, _, PitIndex):-
+    write("enter Pit number to play: "),
+    read(PitIndex).
 
-user_input(_, _, Pit):-
-    write("enter pit number to play: "),
-    read(Pit).
+alphabeta_ai(Board, CurrentPlayerNumber, PitIndex):-
+    sum_board(Board, Alpha),
+    Beta is -Alpha,
+    alphabeta(mancala_pos(Board, CurrentPlayerNumber, 0, 0, -1), Alpha, Beta, mancala_pos(_, _, _, _, PitIndex), _).
+
+%  The alpha-beta algorithm
+alphabeta(Pos, Alpha, Beta, GoodPos, Val) :-
+    moves(Pos, Poslist), !,
+    (
+        boundedbest(Poslist, Alpha, Beta, GoodPos, Val)
+    ;
+        staticval(Pos, Val)
+    ).
+
+boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal) :-
+    alphabeta(Pos, Alpha, Beta, _, Val),
+    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal).
+
+goodenough([], _, _, Pos, Val, Pos, Val):- !. % No other candidate
+
+goodenough(_, Alpha, Beta, Pos, Val, Pos, Val):-
+        min_to_move(Pos), Val > Beta, ! % Maximizer attained upper bound
+    ;
+        max_to_move(Pos), Val < Alpha, !. % Minimizer attained lower bound
+
+goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal):-
+    newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta), % Refine bounds
+    boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1),
+    betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal).
+
+newbounds(Alpha, Beta, Pos, Val, Val, Beta):-
+    min_to_move(Pos), Val > Alpha, !. % Maximizer increased lower bound
+
+newbounds(Alpha, Beta, Pos, Val, Alpha, Val) :-
+    max_to_move(Pos), Val < Beta, !. % Minimizer decreased upper bound
+
+newbounds( Alpha, Beta, _, _, Alpha, Beta).
+
+betterof(Pos, Val, _, Val1, Pos, Val) :-
+        min_to_move(Pos), Val > Val1, !
+    ;
+        max_to_move(Pos), Val < Val1, !.
+
+betterof(_, _, Pos1, Val1, Pos1, Val1).
+
+staticval(mancala_pos(_, _, Player1Score, Player2Score, _), Val):-
+    Val is Player1Score - Player2Score, !.
+
+max_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
+    CurrentPlayerNumber = 1, !.
+
+min_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
+    CurrentPlayerNumber = 2, !.
+
+moves(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, _), Poslist):-
+    nth1(CurrentPlayerNumber, Board, Row),
+    findall(PitIndex, valid_move(Row, PitIndex), ValidMoves),
+    findall(ResultPos, result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, _), ValidMoves, ResultPos), Poslist).
+
+result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, _), ValidMoves, ResultPos):-
+    member(PitIndex, ValidMoves),
+    do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
+    ResultPos = mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex).
