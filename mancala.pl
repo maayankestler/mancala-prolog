@@ -197,34 +197,54 @@ user_input(_, _, PitIndex):-
     read(PitIndex).
 
 alphabeta_ai(Board, CurrentPlayerNumber, PitIndex):-
-    sum_board(Board, Alpha),
-    Beta is -Alpha,
-    alphabeta(mancala_pos(Board, CurrentPlayerNumber, 0, 0, -1), Alpha, Beta, mancala_pos(_, _, _, _, PitIndex), _).
+    alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, 20), !.
+
+alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, Depth):-
+    set_prolog_flag(stack_limit, 6_147_483_648),
+    sum_board(Board, Beta),
+    Alpha is -Beta,
+    alphabeta(mancala_pos(Board, CurrentPlayerNumber, 0, 0, -1), Alpha, Beta, mancala_pos(_, _, _, _, PitIndex), _, Depth), !.
 
 %  The alpha-beta algorithm
-alphabeta(Pos, Alpha, Beta, GoodPos, Val) :-
+alphabeta(Pos, _, _, Pos, Val, 0):-
+    staticval(Pos, Val), !.
+
+
+alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth):-
     moves(Pos, Poslist), !,
+    % write("Poslist: "), write(Poslist), nl,
     (
-        boundedbest(Poslist, Alpha, Beta, GoodPos, Val)
+        boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth)
     ;
         staticval(Pos, Val)
     ).
 
-boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal) :-
-    alphabeta(Pos, Alpha, Beta, _, Val),
-    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal).
+boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal, Depth):-
+    NewDepth is Depth - 1,
+    alphabeta(Pos, Alpha, Beta, _, Val, NewDepth),
+    % write("Pos: "), write(Pos), write(" Val: "), write(Val), nl,
+    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth).
+    % write("GoodPoss: "), write(GoodPos), write(" GoodVal: "), write(GoodVal), nl.
 
-goodenough([], _, _, Pos, Val, Pos, Val):- !. % No other candidate
+% goodenough(_, _, _, Pos, Val, Pos, Val, 0):- !. % End of depth
 
-goodenough(_, Alpha, Beta, Pos, Val, Pos, Val):-
+goodenough([], _, _, Pos, Val, Pos, Val, _):- !. % No other candidate
+
+goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _):-
+    % write("Alpha: "), write(Alpha), write(" Beta: "), write(Beta), write(" Val: "), write(Val), write(" Pos: "), write(Pos),  nl,
+    (
         min_to_move(Pos), Val > Beta, ! % Maximizer attained upper bound
     ;
-        max_to_move(Pos), Val < Alpha, !. % Minimizer attained lower bound
+        max_to_move(Pos), Val < Alpha, ! % Minimizer attained lower bound
+    ).
 
-goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal):-
+goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth):-
     newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta), % Refine bounds
-    boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1),
+    boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1, Depth),
+    % write("Pos: "), write(Pos), write(" Val: "), write(Val), nl,
+    % write("Pos1: "), write(Pos1), write(" Val1: "), write(Val1), nl,
     betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal).
+    % write("GoodPos: "), write(GoodPos), write(" GoodVal: "), write(GoodVal), nl.
 
 newbounds(Alpha, Beta, Pos, Val, Val, Beta):-
     min_to_move(Pos), Val > Alpha, !. % Maximizer increased lower bound
@@ -232,17 +252,18 @@ newbounds(Alpha, Beta, Pos, Val, Val, Beta):-
 newbounds(Alpha, Beta, Pos, Val, Alpha, Val) :-
     max_to_move(Pos), Val < Beta, !. % Minimizer decreased upper bound
 
-newbounds( Alpha, Beta, _, _, Alpha, Beta).
+newbounds( Alpha, Beta, _, _, Alpha, Beta). % Otherwise bounds unchanged
 
-betterof(Pos, Val, _, Val1, Pos, Val) :-
+betterof(Pos, Val, _, Val1, Pos, Val) :- % Pos better than Pos1
         min_to_move(Pos), Val > Val1, !
     ;
         max_to_move(Pos), Val < Val1, !.
 
-betterof(_, _, Pos1, Val1, Pos1, Val1).
+betterof(_, _, Pos1, Val1, Pos1, Val1). % Otherwise Pos1 better
 
 staticval(mancala_pos(_, _, Player1Score, Player2Score, _), Val):-
     Val is Player1Score - Player2Score, !.
+    % write("Val: "), write(Val), nl.
 
 max_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
     CurrentPlayerNumber = 1, !.
@@ -259,3 +280,5 @@ result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2S
     member(PitIndex, ValidMoves),
     do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
     ResultPos = mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex).
+
+% alphabeta_ai([[0,0,0,0,1,1],[0,0,0,0,0,0]], 1, PitIndex, 20).
