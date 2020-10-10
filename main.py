@@ -3,6 +3,7 @@
 from pyswip import Prolog
 import pygame
 import pygame.transform
+import pygame_menu
 import time
 # import logging
 
@@ -10,9 +11,11 @@ import time
 pits_number = 6
 pieces_in_pit = 4
 board = [[pieces_in_pit] * pits_number, [pieces_in_pit] * pits_number]
+# board = [[0,0,0,0,0,1], [1,0,0,0,0,1]]
+# board = [[0, 4, 0, 0, 0, 1], [0, 0, 0, 0, 0, 0]]
 current_player_number = 1
-player1 = {"name": "Maayan", "func": "", "colour": (0, 0, 180), "score": 0}
-player2 = {"name": "ComputerAI", "func": "random_ai", "colour": (0, 128, 0), "score": 0}
+player1 = {"name": "maayan", "func": "", "colour": (0, 0, 180), "score": 0, "extra_args": [10]}
+player2 = {"name": "alphabeta_9", "func": "alphabeta_ai", "colour": (0, 128, 0), "score": 0, "extra_args": [9]}
 players = [player1, player2]
 
 # pygame init
@@ -41,10 +44,12 @@ def do_move(pit_index):
         board = result["NewBoard"]
         player1["score"] = result["NewPlayer1Score"]
         player2["score"] = result["NewPlayer2Score"]
+        print(f"board: {board}, {player1['name']} score: {player1['score']}, {player2['name']} score: {player2['score']} turn: {current_player_number}")
         current_player_number = result["NextPlayer"]
         update_pits_board()
         if sum(board[current_player_number - 1]) == 0:
             current_player_number = (current_player_number % 2) + 1
+        
 
 
 def update_pits_board():
@@ -69,7 +74,7 @@ class PitSurface(pygame.sprite.Sprite):
         self.rect = self.surface.get_rect()
         self.font = pygame.font.SysFont("monospace", 30)
         self.label = self.font.render(str(self.pieces_amount), 1, colour)
-        label_rect = self.label.get_rect(center=(width / 2, height / 2))
+        label_rect = self.label.get_rect(center=(int(width / 2), int(height / 2)))
         self.surface.blit(self.label, label_rect)
 
     def click(self):
@@ -90,20 +95,43 @@ def check_winner():
         return 0
 
 
-def prolog_ai_move(prolog_func, *args):
-    if len(args) > 0:
-        query_string = f"{prolog_func}({board}, {current_player_number}, Pit, {str(args)[1:-1]})"
+def prolog_ai_move(prolog_func, extra_args):
+    if len(extra_args) > 0:
+        query_string = f"{prolog_func}({board}, {current_player_number}, Pit, {str(extra_args)[1:-1]})"
     else:
         query_string = f"{prolog_func}({board}, {current_player_number}, Pit)"
     prolog_query = list(prolog.query(query_string))
-    return prolog_query[0]["Pit"]
+    pit = prolog_query[0]["Pit"]
+    if isinstance(pit, int):
+        return pit
+    else:
+        raise(ValueError)
 
+def menu(surface):
+    def set_difficulty(value, difficulty):
+        # Do the job here !
+        pass
+
+    def start_the_game():
+        # Do the job here !
+        pass
+
+    menu = pygame_menu.Menu(300, 400, 'Welcome', theme=pygame_menu.themes.THEME_BLUE)
+
+    menu.add_text_input('Name :', default='John Doe')
+    menu.add_selector('Difficulty :', [('Hard', 1), ('Easy', 2)], onchange=set_difficulty)
+    menu.add_button('Play', start_the_game)
+    menu.add_button('reset settings', pygame_menu.events.RESET)
+    menu.add_button('Quit', pygame_menu.events.BACK)
+    menu.mainloop(surface)
 
 if __name__ == '__main__':
     # Set up the drawing window
     screen = pygame.display.set_mode([screen_width, screen_height])
     # Fill the background with white
     screen.fill((255, 255, 255))
+
+    # menu(screen)
 
     pits_surface = pygame.Surface((pits_surface_width, pits_surface_height))
     up_menu = pygame.Surface((menu_width, menu_height))
@@ -146,6 +174,19 @@ if __name__ == '__main__':
                 if len(clicked_sprites) > 0:
                     clicked_sprites[0].click()
 
+        if current_player["func"]:
+            pygame.mouse.set_cursor(*pygame.cursors.arrow)
+            start_time = time.time()
+
+            if ("extra_args" in current_player):
+                pit_index = prolog_ai_move(current_player["func"], current_player["extra_args"])
+            else:
+                pit_index = prolog_ai_move(current_player["func"])
+            do_move(pit_index)
+            exec_time = time.time() - start_time
+            if exec_time < 0:
+                time.sleep(0 - exec_time)
+
         for j in range(len(board[0])):
             pits_surface.blit(pits_board[0][j].surface, (pit_surface_width * (len(board[0]) - j - 1), pit_surface_height * 0))
 
@@ -161,25 +202,16 @@ if __name__ == '__main__':
 
         if current_player_number == 1:
             label = players_name_font.render(player1["name"], 1, player1["colour"])
-            label_rect = label.get_rect(center=(menu_width / 2, menu_height / 2))
+            label_rect = label.get_rect(center=(int(menu_width / 2), int(menu_height / 2)))
             up_menu.blit(label, label_rect)
             down_menu.fill((200, 200, 200))
         elif current_player_number == 2:
             label = players_name_font.render(player2["name"], 1, player2["colour"])
-            label_rect = label.get_rect(center=(menu_width / 2, menu_height / 2))
+            label_rect = label.get_rect(center=(int(menu_width / 2), int(menu_height / 2)))
             down_menu.blit(label, label_rect)
             up_menu.fill((200, 200, 200))
         screen.blit(up_menu, (0, 0))
         screen.blit(down_menu, (0, screen_height - menu_height))
-
-        if current_player["func"]:
-            pygame.mouse.set_cursor(*pygame.cursors.arrow)
-            start_time = time.time()
-            pit_index = prolog_ai_move(current_player["func"])
-            do_move(pit_index)
-            exec_time = time.time() - start_time
-            if exec_time < 1:
-                time.sleep(1 - exec_time)
 
         winner = check_winner()
         if winner:
@@ -192,6 +224,7 @@ if __name__ == '__main__':
         # Flip the display
         pygame.display.flip()
 
+    print("goodbye")
     time.sleep(3)
     # Done! Time to quit.
     pygame.quit()
