@@ -5,7 +5,7 @@
 start_game(Player1, Player2, PitsNumber, PiecesInPit, Player1Func, Player2Func):-
     create_initialized_list(PitsNumber, PiecesInPit, Row),
     create_initialized_list(2, Row, Board),
-    % Board=[[4,4,0,1,0,4], [4,4,4,4,4,4]],
+    % Board=[[0,0,0,0,0,0], [0,0,0,0,0,1]],
     Player1Score is 0,
     Player2Score is 0,
     print_board(Board, Player1, Player2, Player1Score, Player2Score),
@@ -149,16 +149,19 @@ put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
 check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
     sum_board(Board, Sum),
     Sum =:= 0,
-    (
-        Player1Score > Player2Score,
-        write("The winner is "), write(Player1), write("!!!!"), nl
-    ;
-        Player2Score > Player2Score,
-        write("The winner is "), write(Player2), write("!!!!"), nl
-    ;
-        Player1Score = Player2Score,
-        write("Tie"), nl
-    ), !.
+    declare_winner(Player1, Player2, Player1Score, Player2Score), !.
+
+declare_winner(Player1, _, Player1Score, Player2Score):-
+    Player1Score > Player2Score, !,
+    write("The winner is "), write(Player1), write("!!!!"), nl.
+
+declare_winner(_, Player2, Player1Score, Player2Score):-
+    Player1Score < Player2Score, !,
+    write("The winner is "), write(Player2), write("!!!!"), nl.
+
+declare_winner(_, _, Player1Score, Player2Score):-
+    Player1Score = Player2Score, !,
+    write("Tie"), nl.
 
 sum_board(Board, Sum):-
     nth1(1, Board, Row1),
@@ -197,7 +200,7 @@ user_input(_, _, PitIndex):-
     read(PitIndex).
 
 alphabeta_ai(Board, CurrentPlayerNumber, PitIndex):-
-    alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, 20), !.
+    alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, 9), !.
 
 alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, Depth):-
     set_prolog_flag(stack_limit, 6_147_483_648),
@@ -209,61 +212,57 @@ alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, Depth):-
 alphabeta(Pos, _, _, Pos, Val, 0):-
     staticval(Pos, Val), !.
 
-
 alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth):-
     moves(Pos, Poslist), !,
-    % write("Poslist: "), write(Poslist), nl,
     (
-        boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth)
+        max_to_move(Pos),
+        MaxPlayer = true
+    ;
+        min_to_move(Pos),
+        MaxPlayer = false
+    ),
+    (
+        boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth, MaxPlayer)
     ;
         staticval(Pos, Val)
     ).
 
-boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal, Depth):-
+boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal, Depth, MaxPlayer):-
     NewDepth is Depth - 1,
     alphabeta(Pos, Alpha, Beta, _, Val, NewDepth),
-    % write("Pos: "), write(Pos), write(" Val: "), write(Val), nl,
-    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth).
-    % write("GoodPoss: "), write(GoodPos), write(" GoodVal: "), write(GoodVal), nl.
+    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer).
 
-% goodenough(_, _, _, Pos, Val, Pos, Val, 0):- !. % End of depth
+goodenough([], _, _, Pos, Val, Pos, Val, _, _):- !. % No other candidate
 
-goodenough([], _, _, Pos, Val, Pos, Val, _):- !. % No other candidate
-
-goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _):-
-    % write("Alpha: "), write(Alpha), write(" Beta: "), write(Beta), write(" Val: "), write(Val), write(" Pos: "), write(Pos),  nl,
+goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _, MaxPlayer):-
     (
-        min_to_move(Pos), Val > Beta, ! % Maximizer attained upper bound
+        MaxPlayer, Val > Beta, ! % Maximizer attained upper bound
     ;
-        max_to_move(Pos), Val < Alpha, ! % Minimizer attained lower bound
+       not(MaxPlayer), Val < Alpha, ! % Minimizer attained lower bound
     ).
 
-goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth):-
-    newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta), % Refine bounds
-    boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1, Depth),
-    % write("Pos: "), write(Pos), write(" Val: "), write(Val), nl,
-    % write("Pos1: "), write(Pos1), write(" Val1: "), write(Val1), nl,
-    betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal).
-    % write("GoodPos: "), write(GoodPos), write(" GoodVal: "), write(GoodVal), nl.
+goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer):-
+    newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta, MaxPlayer), % Refine bounds
+    boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1, Depth, MaxPlayer),
+    betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal, MaxPlayer).
 
-newbounds(Alpha, Beta, Pos, Val, Val, Beta):-
-    min_to_move(Pos), Val > Alpha, !. % Maximizer increased lower bound
+newbounds(Alpha, Beta, _, Val, Val, Beta, MaxPlayer):-
+    MaxPlayer, Val > Alpha, !. % Maximizer increased lower bound
 
-newbounds(Alpha, Beta, Pos, Val, Alpha, Val) :-
-    max_to_move(Pos), Val < Beta, !. % Minimizer decreased upper bound
+newbounds(Alpha, Beta, _, Val, Alpha, Val, MaxPlayer) :-
+    not(MaxPlayer), Val < Beta, !. % Minimizer decreased upper bound
 
-newbounds( Alpha, Beta, _, _, Alpha, Beta). % Otherwise bounds unchanged
+newbounds(Alpha, Beta, _, _, Alpha, Beta, _). % Otherwise bounds unchanged
 
-betterof(Pos, Val, _, Val1, Pos, Val) :- % Pos better than Pos1
-        min_to_move(Pos), Val > Val1, !
+betterof(Pos, Val, _, Val1, Pos, Val, MaxPlayer) :- % Pos better than Pos1
+        MaxPlayer, Val > Val1, !
     ;
-        max_to_move(Pos), Val < Val1, !.
+        not(MaxPlayer), Val < Val1, !.
 
-betterof(_, _, Pos1, Val1, Pos1, Val1). % Otherwise Pos1 better
+betterof(_, _, Pos1, Val1, Pos1, Val1, _). % Otherwise Pos1 better
 
 staticval(mancala_pos(_, _, Player1Score, Player2Score, _), Val):-
     Val is Player1Score - Player2Score, !.
-    % write("Val: "), write(Val), nl.
 
 max_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
     CurrentPlayerNumber = 1, !.
@@ -282,3 +281,7 @@ result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2S
     ResultPos = mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex).
 
 % alphabeta_ai([[0,0,0,0,1,1],[0,0,0,0,0,0]], 1, PitIndex, 20).
+% alphabeta_ai([[4, 4, 4, 4, 4, 4], [4, 4, 4, 4, 4, 4]], 1, Pit, 1).
+% alphabeta_ai([[1, 0, 3, 12, 0, 0], [0, 0, 0, 0, 0, 0]], 1, Pit, 9).
+% alphabeta_ai([[1, 4, 1, 1, 0, 7], [3, 3, 0, 3, 9, 0]], 1, Pit, 9).
+% alphabeta_ai([[5, 5, 5, 4, 4, 0], [5, 5, 5, 4, 4, 0]], 2, Pit, 9).
