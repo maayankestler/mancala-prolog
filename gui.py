@@ -1,11 +1,15 @@
 #!/usr/bin/env python
 
+# Programmer - Maayan Kestler
+#  File Name - gui.py
+# Description - mancala game with gui, use the prolog code (mancala.pl) for doing moves ad computer playing logic
+# Synopsys - after installing all the pip packages in requirement.txt just run this code and start to play
+
 from pyswip import Prolog
 import pygame
 import pygame.transform
 import pygame_menu
 import time
-# import logging
 
 # pygame init
 pygame.init()
@@ -17,29 +21,42 @@ prolog.consult("mancala.pl")
 
 class MancalaGame:
     def __init__(self, player1=None, player2=None, pits_number=6, pieces_in_pit=4, screen_width=1200, screen_height=500, menu_height=50):
+        """
+        create mancala game instance
+        @param player1: the first MancalaPlayer
+        @param player2: the second MancalaPlayer
+        @param pits_number: how much pits will be in each row
+        @param pieces_in_pit: how much pieces will be in each pit
+        @param screen_width: the width of the screen in pixels
+        @param screen_height: the height of the screen in pixels
+        @param menu_height: the height of the upper and lower menus
+        """
         self.player1 = player1
         self.player2 = player2
         self.player1_score = 0
         self.player2_score = 0
         self.players = [player1, player2]
-        self.current_player_number = 1
+        self.current_player_number = 1  # 1 for player1 and 2 for player2
         self.pits_number = pits_number
         self.pieces_in_pit = pieces_in_pit
-        self.board = [[pieces_in_pit] * pits_number, [pieces_in_pit] * pits_number]
+        self.board = [[pieces_in_pit] * pits_number, [pieces_in_pit] * pits_number]  # the board of the game
         self.screen_width = screen_width
         self.screen_height = screen_height
-        self.screen = pygame.display.set_mode([self.screen_width, self.screen_height])
+        self.screen = pygame.display.set_mode([self.screen_width, self.screen_height])  # the pygmae screen
         self.menu_width = screen_width
         self.menu_height = menu_height
-        self.result_pit_width = int(screen_width / 8)
-        self.pits_surface_width = screen_width - 2 * self.result_pit_width
-        self.pits_surface_height = int(screen_height - 2 * menu_height)
+        self.result_pit_width = int(screen_width / 8)  # the width of the pit that represent the score
+        self.pits_surface_width = screen_width - 2 * self.result_pit_width  # the width in screen of the non result pits
+        self.pits_surface_height = int(screen_height - 2 * menu_height)  # the height in screen of the non result pits
         self.pits_surface = pygame.Surface((self.pits_surface_width, self.pits_surface_height))
-        self.pits_board = [row[:] for row in self.board]
-        self.pit_surface_width = int(self.pits_surface_width / pits_number)
-        self.pit_surface_height = int(self.pits_surface_height / 2)
+        self.pits_board = [row[:] for row in self.board]  # the pits board hold the drawing objects of the pits
+        self.pit_surface_width = int(self.pits_surface_width / pits_number)  # the pixel width of each pit
+        self.pit_surface_height = int(self.pits_surface_height / 2)  # the height width of each pit
 
     def start_menu(self):
+        """
+        display the menu before the game start
+        """
         funcs_list = [('human', ''), ('alphabeta', 'alphabeta_ai'), ('random', 'random_ai')]
         alphabeta_levels_list = [('Very easy', 1), ('Easy', 3), ('Medium', 5), ('Hard', 7), ('Very hard', 9)]
         self.player1 = MancalaPlayer(name="Maayan", colour=(0, 0, 180), func="", extra_args=[1])
@@ -53,24 +70,28 @@ class MancalaGame:
             menu.disable()
 
         menu = pygame_menu.Menu(self.screen_height, self.screen_width, 'Welcome', theme=pygame_menu.themes.THEME_BLUE)
+        # player1 configs
         menu.add_text_input('player1 name: ', default=self.player1.name, onchange=self.player1.set_name)
         menu.add_selector('player1 func: ', funcs_list, default=0, onchange=self.player1.set_func)
-        # if "alphabeta" in self.player1.func:
         menu.add_selector('player1 level: ', alphabeta_levels_list, onchange=self.player1.set_alphabeta_level)
         menu.add_color_input('player1 color: ', color_type='rgb', default=self.player1.colour, onchange=self.player1.set_colour, font_size=18)
-
+        # player2 configs
         menu.add_text_input('player2 name: ', default=self.player2.name, onchange=self.player2.set_name)
         menu.add_selector('player2 func: ', funcs_list, default=1, onchange=self.player2.set_func)
-        # if "alphabeta" in self.player2.func:
         menu.add_selector('player2 level: ', alphabeta_levels_list, default=0, onchange=self.player2.set_alphabeta_level)
         menu.add_color_input('player2 color: ', color_type='rgb', default=self.player2.colour, onchange=self.player2.set_colour, font_size=18)
+
         menu.add_button('Play', start_the_game)
-        # menu.add_button('reset settings', pygame_menu.events.RESET)
         menu.add_button('Quit', pygame_menu.events.EXIT)
 
         menu.mainloop(self.screen)
 
     def end_menu(self, winner_text="", winner_colour=(0, 0, 0)):
+        """
+        the menu to display at the end of the game
+        @param winner_text: the text descrive the winner of the last gmme
+        @param winner_colour: the colour of the winner_text
+        """
         def play_again():
             self.__init__(self.player1, self.player2)
             self.play(self.player1, self.player2)
@@ -88,14 +109,18 @@ class MancalaGame:
         menu.mainloop(self.screen)
 
     def play(self, player1=None, player2=None):
+        """
+        play the mancala game
+        @param player1: the first MancalaPlayer
+        @param player2: the second MancalaPlayer
+        """
+        # if no players input use the start menu to define them
         if not player1 or not player2:
             self.start_menu()
         else:
             self.player1 = player1
             self.player2 = player2
         self.players = [self.player1, self.player2]
-        # Fill the background with white
-        self.screen.fill((255, 255, 255))
 
         up_menu = pygame.Surface((self.menu_width, self.menu_height))
         up_menu.fill((200, 200, 200))
@@ -105,13 +130,13 @@ class MancalaGame:
 
         self.update_pits_board()
 
-        # Run until the user asks to quit
+        # Run until the game finished or the user asks to quit
         running = True
         while running:
-            self.screen.fill((255, 255, 255))
+            self.screen.fill((255, 255, 255))  # Fill the background with white
             current_player = self.players[self.current_player_number - 1]
 
-            # Did the user click the window close button?
+            # catch game events
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
@@ -133,21 +158,24 @@ class MancalaGame:
                     pos = pygame.mouse.get_pos()
                     sprites = self.pits_board[self.current_player_number - 1]
 
-                    # get a list of all sprites that are under the mouse cursor
+                    # get a list of all sprites that are under the mouse cursor when click
                     clicked_sprites = [s for s in sprites if s.rect.collidepoint(pos)]
                     if len(clicked_sprites) > 0:
                         clicked_sprites[0].click()
 
+            #  if this player is not a human
             if current_player.func:
                 pygame.mouse.set_cursor(*pygame.cursors.arrow)
                 start_time = time.time()
 
-                if current_player.extra_args:
-                    pit_index = self.prolog_ai_move(current_player.func, current_player.extra_args)
-                else:
-                    pit_index = self.prolog_ai_move(current_player.func)
+                # if current_player.extra_args:
+                #     pit_index = self.prolog_ai_move(current_player.func, current_player.extra_args)
+                # else:
+                #     pit_index = self.prolog_ai_move(current_player.func)
+                pit_index = self.prolog_ai_move(current_player.func, current_player.extra_args)
                 self.do_move(pit_index)
                 exec_time = time.time() - start_time
+                # make delay
                 if exec_time < 1:
                     time.sleep(1 - exec_time)
 
@@ -189,12 +217,14 @@ class MancalaGame:
                 time.sleep(2)
                 self.end_menu(winner_text, winner_colour)
 
-        # Done! Time to quit.
         pygame.quit()
 
     def do_move(self, pit_index):
-        prolog_query = list(prolog.query(
-            f"do_move({self.board}, {self.current_player_number}, {self.player1_score}, {self.player2_score},{pit_index}, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer)"))
+        """
+        do one move in the game
+        @param pit_index: the index of the pit the player want to play
+        """
+        prolog_query = list(prolog.query(f"do_move({self.board}, {self.current_player_number}, {self.player1_score}, {self.player2_score}, {pit_index}, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer)"))
         if len(prolog_query) > 0:
             result = prolog_query[0]
             self.board = result["NewBoard"]
@@ -207,6 +237,9 @@ class MancalaGame:
                 current_player_number = (self.current_player_number % 2) + 1
 
     def update_pits_board(self):
+        """
+        update the pits_board (that hold the drawing objects of the pits) by board (only numbers)
+        """
         for j in range(len(self.board[0])):
             pit_surface = PitSurface(self.board[0][j], self.pit_surface_width, self.pit_surface_height, j, self.player1.colour, do_move=self.do_move)
             pit_surface.rect.move_ip(self.result_pit_width + self.pit_surface_width * (len(self.board[0]) - j - 1), self.pit_surface_height * 0)
@@ -220,6 +253,13 @@ class MancalaGame:
             self.pits_surface.blit(self.pits_board[1][j].surface,(self.pit_surface_width * j, self.pit_surface_height * 1))
 
     def check_winner(self):
+        """
+        check if the game ended and who won
+        @return: 0 if the game did not end wet,
+                 1 if player1 won,
+                 2 if player2 won,
+                 3 if the game end with tie
+        """
         if sum(self.board[0]) + sum(self.board[1]) == 0:
             if self.player1_score > self.player2_score:
                 return 1
@@ -231,6 +271,12 @@ class MancalaGame:
             return 0
 
     def prolog_ai_move(self, prolog_func, extra_args=[]):
+        """
+        do a move for the computer
+        @param prolog_func: the func from mancala.pl to use
+        @param extra_args: use the add more args to the prolog_func (for example alphabeta depth)
+        @return: the index of the pit to play
+        """
         if extra_args:
             query_string = f"{prolog_func}({self.board}, {self.current_player_number}, Pit, {str(extra_args)[1:-1]})"
         else:
@@ -243,6 +289,7 @@ class MancalaGame:
             raise ValueError(f"got {pit} as pit index from {prolog_func}, excepted an int")
 
 
+# represent a mancala player
 class MancalaPlayer:
     def __init__(self, name="Maayan", colour=(0, 0, 180), func="", extra_args=[]):
         self.name = name
@@ -281,6 +328,9 @@ class PitSurface(pygame.sprite.Sprite):
         self.do_move = do_move
 
     def click(self):
+        """
+        this function will be called when the pit is clicked
+        """
         if self.index >= 0:
             self.do_move(self.index)
 
