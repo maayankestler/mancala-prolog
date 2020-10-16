@@ -57,8 +57,8 @@ play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, P
 
 next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score, _, _, Depth1, Depth2):-
     check_winner(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
-    write(Player1),write(Depth1),write(": "), write(NewPlayer1Score), write(" "),
-    write(Player2),write(Depth2),write(": "), write(NewPlayer2Score), nl, !. % someone won, the game end
+    write(Player1), write(": "), write(NewPlayer1Score), write(" "),
+    write(Player2), write(": "), write(NewPlayer2Score), nl, !. % someone won, the game end
 
 next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func, Depth1, Depth2):-
     play(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func, Depth1, Depth2), !. % play the next move
@@ -92,50 +92,38 @@ valid_move(Row, PitIndex):-
 % PitIndex- th index of the pit in the row the pieces need to be put in
 % 
 % put last piece in result pit, the player get another turn
-put_pieces(Board, 0, _, 1, CurrentPlayerNumber, Player1Score, Player2Score, Board, Player1Score, Player2Score, NextPlayer):- 
-    nth1(CurrentPlayerNumber, Board, Row),
-    (
-        sum_list(Row, 0),
-        NextPlayer is (CurrentPlayerNumber mod 2) + 1
-    ;
-        NextPlayer = CurrentPlayerNumber
-    ), !.
+put_pieces(Board, 0, _, 1, CurrentPlayerNumber, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, CurrentPlayerNumber):- 
+    check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score), !.
 
 % put last piece, if in empty pit get other player piece from facing pit
 put_pieces(Board, 0, RowIndex, PitIndex, CurrentPlayerNumber, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer):-
-    OtherPlayer is (CurrentPlayerNumber mod 2) + 1,
+    NextPlayer is (CurrentPlayerNumber mod 2) + 1,
     (
         CurrentPlayerNumber = RowIndex,
         LastPitIndex is PitIndex - 1,
         nth1(RowIndex, Board, Row),
         replace_nth1(Row, LastPitIndex, 1, 0, NewRow),
-        nth1(OtherPlayer, Board, SecondeRow),
+        nth1(NextPlayer, Board, SecondeRow),
         length(SecondeRow, SecondeRowLength),
         SecondePitIndex is SecondeRowLength - LastPitIndex + 1,
         replace_nth1(SecondeRow, SecondePitIndex, X, 0, NewSecondeRow),
         X > 0,
         (
             CurrentPlayerNumber = 1,
-            NewPlayer1Score is Player1Score + X + 1,
-            NewPlayer2Score = Player2Score,
-            NewBoard = [NewRow, NewSecondeRow]
+            TempPlayer1Score is Player1Score + X + 1,
+            TempPlayer2Score = Player2Score,
+            TempBoard = [NewRow, NewSecondeRow]
         ;
             CurrentPlayerNumber = 2,
-            NewPlayer2Score is Player2Score + X + 1,
-            NewPlayer1Score = Player1Score,
-            NewBoard = [NewSecondeRow, NewRow]
-        )
+            TempPlayer2Score is Player2Score + X + 1,
+            TempPlayer1Score = Player1Score,
+            TempBoard = [NewSecondeRow, NewRow]
+        ),
+        check_empty_row(TempBoard, TempPlayer1Score, TempPlayer2Score, NewBoard, NewPlayer1Score, NewPlayer2Score)
     ;
         NewPlayer1Score = Player1Score,
         NewPlayer2Score = Player2Score,
         NewBoard = Board
-    ),
-    nth1(OtherPlayer, NewBoard, CheckRow),
-    (
-        sum_list(CheckRow, 0),
-        NextPlayer = CurrentPlayerNumber
-    ;
-        NextPlayer = OtherPlayer
     ), !.
 
 % put pieces in same row
@@ -184,8 +172,33 @@ put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
 % check if there is a winner
 check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
     sum_board(Board, Sum),
-    Sum =:= 0.
-    % declare_winner(Player1, Player2, Player1Score, Player2Score), !.
+    Sum =:= 0,
+    declare_winner(Player1, Player2, Player1Score, Player2Score), !.
+
+% check if there is an empty row in the board (in this case the game end) and update the scores and board.
+% 
+% there is an empry row
+check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score):-
+    nth1(1, Board, Row1),
+    nth1(2, Board, Row2),
+    sum_list(Row1, Sum1),
+    sum_list(Row2, Sum2),
+    (
+        Sum1 =:= 0,
+        NewPlayer1Score is Player1Score + Sum2,
+        NewPlayer2Score = Player2Score
+    ;
+        Sum2 =:= 0,
+        NewPlayer2Score is Player2Score + Sum1,
+        NewPlayer1Score = Player1Score
+    ),
+    % empty the board
+    length(Row1, RowsLength),
+    create_initialized_list(RowsLength, 0, Row),
+    create_initialized_list(2, Row, NewBoard), !.
+
+% there is no empty row, return the same values
+check_empty_row(Board, Player1Score, Player2Score, Board, Player1Score, Player2Score):- !.
 
 % declare who the winner is
 declare_winner(Player1, _, Player1Score, Player2Score):-
@@ -352,4 +365,6 @@ check_results:-
     check_results(D1, D2).
 
 check_results(D1, D2):-
-    start_game('AI_', 'AI_', 6, 4, alphabeta_ai, alphabeta_ai, D1, D2).
+    atom_concat('AI_', D1, P1),
+    atom_concat('AI_', D2, P2),
+    start_game(P1, P2, 6, 4, alphabeta_ai, alphabeta_ai, D1, D2).
