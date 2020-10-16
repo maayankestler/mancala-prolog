@@ -55,7 +55,7 @@ play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, P
         play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, Player1Func, Player2Func,Depth1,Depth2) % play the turn again in case of invalid move
     ), !.
 
-next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score, _, _, Depth1, Depth2):-
+next_move(NewBoard, Player1, Player2, _, NewPlayer1Score, NewPlayer2Score, _, _, _, _):-
     check_winner(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
     write(Player1), write(": "), write(NewPlayer1Score), write(" "),
     write(Player2), write(": "), write(NewPlayer2Score), nl, !. % someone won, the game end
@@ -352,13 +352,7 @@ result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2S
     do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
     ResultPos = mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex).
 
-% alphabeta_ai([[0,0,0,0,1,1],[0,0,0,0,0,0]], 1, PitIndex, 20).
-% alphabeta_ai([[4, 4, 4, 4, 4, 4], [4, 4, 4, 4, 4, 4]], 1, Pit, 1).
-% alphabeta_ai([[1, 0, 3, 12, 0, 0], [0, 0, 0, 0, 0, 0]], 1, Pit, 9).
-% alphabeta_ai([[1, 4, 1, 1, 0, 7], [3, 3, 0, 3, 9, 0]], 1, Pit, 9).
-% alphabeta_ai([[5, 5, 5, 4, 4, 0], [5, 5, 5, 4, 4, 0]], 2, Pit, 9).
-% alphabeta_ai( [[2, 0, 3, 1, 0, 1], [3, 3, 1, 1, 0, 0]], 2, Pit, 9).
-
+% run games with diffrent depths
 check_results:-
     between(1, 9, D1),
     between(1, 9, D2),
