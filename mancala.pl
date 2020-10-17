@@ -305,7 +305,7 @@ goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _, MaxPlayer):-
     (
         MaxPlayer, Val > Beta, ! % Maximizer attained upper bound
     ;
-       not(MaxPlayer), Val < Alpha, ! % Minimizer attained lower bound
+        not(MaxPlayer), Val < Alpha, ! % Minimizer attained lower bound
     ).
 
 goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer):-

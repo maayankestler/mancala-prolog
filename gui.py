@@ -41,6 +41,7 @@ class MancalaGame:
         self.pits_number = pits_number
         self.pieces_in_pit = pieces_in_pit
         self.board = [[pieces_in_pit] * pits_number, [pieces_in_pit] * pits_number]  # the board of the game
+        # self.board = [[0, 1, 0, 1, 1, 0], [5, 1, 0, 0, 0, 1]]  # example
         self.screen_width = screen_width
         self.screen_height = screen_height
         self.screen = pygame.display.set_mode([self.screen_width, self.screen_height])  # the pygmae screen
