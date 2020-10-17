@@ -13,6 +13,7 @@ import time
 
 # pygame init
 pygame.init()
+pygame.display.set_caption('mancala')
 
 # prolog init
 prolog = Prolog()
@@ -336,5 +337,15 @@ class PitSurface(pygame.sprite.Sprite):
 
 
 if __name__ == '__main__':
-    game = MancalaGame()
+    try:
+        import ctypes
+
+        # calc game's screen resolution by the monitor resolution
+        user32 = ctypes.windll.user32
+        monitor_width = user32.GetSystemMetrics(0)
+        monitor_height = user32.GetSystemMetrics(1)
+        game = MancalaGame(screen_width=int(monitor_width*5/8), screen_height=int(monitor_height*5/11))
+    except:
+        game = MancalaGame()  # use default screen resolution
+
     game.play()
