@@ -268,16 +268,14 @@ alphabeta_ai(Board, CurrentPlayerNumber, PitIndex, Depth):-
     alphabeta(mancala_pos(Board, CurrentPlayerNumber, 0, 0, -1), Alpha, Beta, mancala_pos(_, _, _, _, PitIndex), _, Depth), !.
 
 %  The alpha-beta algorithm (based on the book)
-%  use static val when Depth is 0
-alphabeta(Pos, _, _, Pos, Val, 0):-
-    staticval(Pos, Val), !.
 
 % general case alpha-beta algorithm
 % Pos describe with mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex)
 % the score use for the heuristic function
 % PitIndex is the index of the pit played in the last turn (-1 if it's the first runing)
 alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth):-
-    moves(Pos, Poslist), !,
+    Depth > 0,
+    moves(Pos, Poslist),
     (
         max_to_move(Pos),
         MaxPlayer = true
@@ -285,17 +283,17 @@ alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth):-
         min_to_move(Pos),
         MaxPlayer = false
     ),
-    (
-        boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth, MaxPlayer)
-    ;
-        staticval(Pos, Val)
-    ).
+    boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth, MaxPlayer), !.
+
+%  use static val when Depth is 0 or reaced leafs
+alphabeta(Pos, _, _, Pos, Val, _):-
+    staticval(Pos, Val), !.
 
 % MaxPlayer- true if the parent node is a max player
 boundedbest([Pos | Poslist], Alpha, Beta, GoodPos, GoodVal, Depth, MaxPlayer):-
     NewDepth is Depth - 1,
     alphabeta(Pos, Alpha, Beta, _, Val, NewDepth),
-    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer).
+    goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer), !.
 
 goodenough([], _, _, Pos, Val, Pos, Val, _, _):- !. % No other candidate
 
@@ -309,7 +307,7 @@ goodenough(_, Alpha, Beta, Pos, Val, Pos, Val, _, MaxPlayer):-
 goodenough(Poslist, Alpha, Beta, Pos, Val, GoodPos, GoodVal, Depth, MaxPlayer):-
     newbounds(Alpha, Beta, Pos, Val, NewAlpha, NewBeta, MaxPlayer), % Refine bounds
     boundedbest(Poslist, NewAlpha, NewBeta, Pos1, Val1, Depth, MaxPlayer),
-    betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal, MaxPlayer).
+    betterof(Pos, Val, Pos1, Val1, GoodPos, GoodVal, MaxPlayer), !.
 
 newbounds(Alpha, Beta, _, Val, Val, Beta, MaxPlayer):-
     MaxPlayer, Val > Alpha, !. % Maximizer increased lower bound
@@ -324,31 +322,29 @@ betterof(Pos, Val, _, Val1, Pos, Val, MaxPlayer) :- % Pos better than Pos1
     ;
         not(MaxPlayer), Val < Val1, !.
 
-betterof(_, _, Pos1, Val1, Pos1, Val1, _). % Otherwise Pos1 better
+betterof(_, _, Pos1, Val1, Pos1, Val1, _):- !. % Otherwise Pos1 better
 
 % heuristic function, calculate the value of given mancala_pos
 staticval(mancala_pos(_, _, Player1Score, Player2Score, _), Val):-
     Val is Player1Score - Player2Score, !.
 
 % player1 is the max player
-max_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
-    CurrentPlayerNumber = 1, !.
+max_to_move(mancala_pos(_, 1, _, _, _)):- !.
 
 % player2 is the min player
-min_to_move(mancala_pos(_, CurrentPlayerNumber, _, _, _)):-
-    CurrentPlayerNumber = 2, !.
+min_to_move(mancala_pos(_, 2, _, _, _)):- !.
 
 % Poslist contain all the possible positions that can be reached by playing a move from the given mancala_pos
 moves(Pos, Poslist):-
-    findall(ResultPos, result_posistions(Pos, ResultPos), Poslist).
+    findall(ResultPos, result_posistions(Pos, ResultPos), Poslist), !.
 
-% true if ResultPos is is a mancala_pos that can be reached from the given mancala_pos
-result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, _), ResultPos):-
+% result_posistions(Pos, ResultPos): true if ResultPos is is a mancala_pos that can be reached from the given Pos
+result_posistions(mancala_pos(Board, CurrentPlayerNumber, Player1Score, Player2Score, _),
+                  mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex)):-
     nth1(CurrentPlayerNumber, Board, Row),
     findall(PitIndex, valid_move(Row, PitIndex), ValidMoves),
     member(PitIndex, ValidMoves),
-    do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
-    ResultPos = mancala_pos(NewBoard, NextPlayer, NewPlayer1Score, NewPlayer2Score, PitIndex).
+    do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer).
 
 % run games with diffrent depths
 check_results:-
@@ -359,4 +355,4 @@ check_results:-
 check_results(D1, D2):-
     atom_concat('AI_', D1, P1),
     atom_concat('AI_', D2, P2),
-    start_game(P1, P2, 6, 4, alphabeta_ai, alphabeta_ai, D1, D2).
+    start_game(P1, P2, 6, 4, alphabeta_ai, alphabeta_ai, D1, D2), !.
