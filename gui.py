@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 # Programmer - Maayan Kestler
-#  File Name - gui.py
+# File Name - gui.py
 # Description - mancala game with gui, use the prolog code (mancala.pl) for doing moves ad computer playing logic
 # Synopsys - after installing all the pip packages in requirement.txt just run this code and start to play
 
@@ -178,8 +178,8 @@ class MancalaGame:
                 self.do_move(pit_index)
                 exec_time = time.time() - start_time
                 # make delay
-                if exec_time < 1:
-                    time.sleep(1 - exec_time)
+                if exec_time < 2:
+                    time.sleep(2 - exec_time)
 
             self.screen.blit(self.pits_surface, (self.result_pit_width, self.menu_height))
 
@@ -232,7 +232,7 @@ class MancalaGame:
             self.board = result["NewBoard"]
             self.player1_score = result["NewPlayer1Score"]
             self.player2_score = result["NewPlayer2Score"]
-            print(f"board: {self.board}, {self.player1.name} score: {self.player1_score}, {self.player2.name} score: {self.player2_score} turn: {self.current_player_number}")
+            print(f"board: {self.board}, {self.player1.name} score: {self.player1_score}, {self.player2.name} score: {self.player2_score} turn: {self.current_player_number} played: {pit_index}")
             self.current_player_number = result["NextPlayer"]
             self.update_pits_board()
             if sum(self.board[self.current_player_number - 1]) == 0:
@@ -350,3 +350,5 @@ if __name__ == '__main__':
         game = MancalaGame()  # use default screen resolution
 
     game.play()
+    # game.play(MancalaPlayer(name="AI_2", colour=(0, 0, 180), func="alphabeta_ai", extra_args=[2]),
+    #           MancalaPlayer(name="AI_7", colour=(0, 128, 0), func="alphabeta_ai", extra_args=[7]))

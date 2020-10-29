@@ -90,7 +90,7 @@ valid_move(Row, PitIndex):-
 % PiecesCount- amount of pieces left to put
 % RowIndex- the index of the row the pieces need to be put in
 % PitIndex- th index of the pit in the row the pieces need to be put in
-% 
+
 % put last piece in result pit, the player get another turn
 put_pieces(Board, 0, _, 1, CurrentPlayerNumber, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, CurrentPlayerNumber):- 
     check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score), !.
@@ -167,13 +167,7 @@ put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
     put_pieces(Board, NewPiecesCount, NewRowIndex, NewPitIndex, CurrentPlayerNumber,
                TempPlayer1Score, TempPlayer2Score, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer), !.
 
-% check if there is a winner
-check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
-    sum_board(Board, Sum),
-    Sum =:= 0.
-    % declare_winner(Player1, Player2, Player1Score, Player2Score), !.
-
-% check if there is an empty row in the board (in this case the game end) and update the scores and board.
+% check if there is an empty row in the board (in this case the game end) and update the scores and the board.
 % 
 % there is an empry row
 check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score):-
@@ -197,6 +191,12 @@ check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, Ne
 
 % there is no empty row, return the same values
 check_empty_row(Board, Player1Score, Player2Score, Board, Player1Score, Player2Score):- !.
+
+% check if there is a winner
+check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
+    sum_board(Board, Sum),
+    Sum =:= 0.
+    % declare_winner(Player1, Player2, Player1Score, Player2Score), !.
 
 % declare who the winner is
 declare_winner(Player1, _, Player1Score, Player2Score):-
@@ -239,7 +239,7 @@ create_initialized_list(Length, Value, List):-
     length(List,Length), 
     maplist(=(Value), List), !.
 
-% playin logic, play random valid pit
+% playing logic, play random valid pit
 random_ai(Board, CurrentPlayerNumber, PitIndex):-
     nth1(CurrentPlayerNumber, Board, Row),
     findall(Pit, valid_move(Row, Pit), ValidMoves),
@@ -285,7 +285,7 @@ alphabeta(Pos, Alpha, Beta, GoodPos, Val, Depth):-
     ),
     boundedbest(Poslist, Alpha, Beta, GoodPos, Val, Depth, MaxPlayer), !.
 
-%  use static val when Depth is 0 or reaced leafs
+%  use static val when Depth is 0 or reached leafs
 alphabeta(Pos, _, _, Pos, Val, _):-
     staticval(Pos, Val), !.
 
