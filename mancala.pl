@@ -19,7 +19,7 @@ start_game(Player1, Player2, PitsNumber, PiecesInPit, Player1Func, Player2Func, 
     create_initialized_list(2, Row, Board),
     Player1Score is 0,
     Player2Score is 0,
-    print_board(Board, Player1, Player2, Player1Score, Player2Score),
+    % print_board(Board, Player1, Player2, Player1Score, Player2Score),
     play(Board, Player1, Player2, 1, Player1Score, Player2Score, Player1Func, Player2Func, Depth1, Depth2), !.
 
 % start the game with deafult arguments
@@ -43,12 +43,12 @@ play(Board, Player1, Player2, CurrentPlayerNumber, Player1Score, Player2Score, P
         Colour = 'green',
         Depth = Depth2
     ),
-    write("turn: "), ansi_format([bold,fg(Colour)], '~w', [Player]), nl,
+    % write("turn: "), ansi_format([bold,fg(Colour)], '~w', [Player]), nl,
     call(Func, Board, CurrentPlayerNumber, PitIndex, Depth),
-    ansi_format([bold,fg(Colour)], '~w', [Player]), ansi_format([bold,fg(cyan)], ' move is: ~w', [PitIndex]), nl,
+    % ansi_format([bold,fg(Colour)], '~w', [Player]), ansi_format([bold,fg(cyan)], ' move is: ~w', [PitIndex]), nl,
     (
         do_move(Board, CurrentPlayerNumber, Player1Score, Player2Score, PitIndex, NewBoard, NewPlayer1Score, NewPlayer2Score, NextPlayer),
-        print_board(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
+        % print_board(NewBoard, Player1, Player2, NewPlayer1Score, NewPlayer2Score),
         next_move(NewBoard, Player1, Player2, NextPlayer, NewPlayer1Score, NewPlayer2Score, Player1Func, Player2Func,Depth1,Depth2)
     ;
         ansi_format([bold,fg(red)], 'invalid move, try again', []), nl,
@@ -121,9 +121,7 @@ put_pieces(Board, 0, RowIndex, PitIndex, CurrentPlayerNumber, Player1Score, Play
         ),
         check_empty_row(TempBoard, TempPlayer1Score, TempPlayer2Score, NewBoard, NewPlayer1Score, NewPlayer2Score)
     ;
-        NewPlayer1Score = Player1Score,
-        NewPlayer2Score = Player2Score,
-        NewBoard = Board
+        check_empty_row(Board, Player1Score, Player2Score, NewBoard, NewPlayer1Score, NewPlayer2Score)
     ), !.
 
 % put pieces in same row
@@ -172,8 +170,8 @@ put_pieces(Board, PiecesCount, RowIndex, PitIndex, CurrentPlayerNumber,
 % check if there is a winner
 check_winner(Board, Player1, Player2, Player1Score, Player2Score):-
     sum_board(Board, Sum),
-    Sum =:= 0,
-    declare_winner(Player1, Player2, Player1Score, Player2Score), !.
+    Sum =:= 0.
+    % declare_winner(Player1, Player2, Player1Score, Player2Score), !.
 
 % check if there is an empty row in the board (in this case the game end) and update the scores and board.
 % 
